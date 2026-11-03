@@ -96,6 +96,18 @@ class TemplatePicker extends StatelessWidget {
         return Icons.blur_on;
       case VisualizerTemplate.waveformTunnel:
         return Icons.timeline;
+      case VisualizerTemplate.spiralGalaxy:
+        return Icons.auto_awesome;
+      case VisualizerTemplate.dnaHelix:
+        return Icons.egg_alt_outlined;
+      case VisualizerTemplate.gridWall:
+        return Icons.grid_3x3;
+      case VisualizerTemplate.solarFlare:
+        return Icons.wb_sunny;
+      case VisualizerTemplate.cubeField:
+        return Icons.view_in_ar;
+      case VisualizerTemplate.liquidWaves:
+        return Icons.waves;
     }
   }
 }

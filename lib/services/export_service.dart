@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
@@ -13,14 +14,19 @@ import '../visualizer/frame_renderer.dart';
 ///
 /// Pipeline (no fake progress — every percentage point is a rendered frame):
 /// 1. Render every frame of the song offscreen with the real visualizer
-///    painter, in chunks of 240 frames.
-/// 2. Encode each chunk to an H.264 segment with FFmpeg.
+///    painter, in chunks of 480 frames.
+/// 2. Encode each chunk to an H.264 segment with FFmpeg (veryfast preset,
+///    all CPU threads).
 /// 3. Concatenate the segments and mux the ORIGINAL audio track in, so the
 ///    exported video keeps the complete song in sync with the visuals.
 ///
+/// Speed notes: the background blur is pre-rendered ONCE per export instead
+/// of once per frame, and frames are JPEG-encoded at quality 80 (identical
+/// after H.264 re-encode, but faster to decode inside FFmpeg).
+///
 /// Output: H.264 + AAC MP4 at the chosen aspect, resolution and FPS.
 class ExportService {
-  static const int _chunkFrames = 240;
+  static const int _chunkFrames = 480;
 
   static Future<String> export({
     required VisualizerProject project,
@@ -47,6 +53,28 @@ class ExportService {
         '${exportsDir.path}/${safeTitle}_${DateTime.now().millisecondsSinceEpoch}.mp4';
 
     try {
+      // Pre-blur the background once so no frame pays for a full-screen
+      // saveLayer blur. Falls back to the original image on any error.
+      ui.Image? exportBackground =
+          backgroundImage is ui.Image ? backgroundImage : null;
+      var backgroundPreBlurred = false;
+      if (exportBackground != null && project.settings.backgroundBlur > 0.02) {
+        try {
+          final blurred = await blurBackgroundOnce(
+            src: exportBackground,
+            width: width,
+            height: height,
+            blur: project.settings.backgroundBlur,
+          );
+          if (blurred != null) {
+            exportBackground = blurred;
+            backgroundPreBlurred = true;
+          }
+        } catch (_) {
+          // Keep the original background; the painter blurs per frame.
+        }
+      }
+
       final segments = <String>[];
       int rendered = 0;
       for (int start = 0; start < totalFrames; start += _chunkFrames) {
@@ -63,10 +91,11 @@ class ExportService {
             beat: frame.beat,
             template: project.template,
             settings: project.settings,
-            background: backgroundImage,
+            background: exportBackground,
             time: t,
             title: project.title,
             artist: project.artist,
+            backgroundPreBlurred: backgroundPreBlurred,
           );
           final idx = (f - start + 1).toString().padLeft(6, '0');
           await File('${chunkDir.path}/frame_$idx.jpg').writeAsBytes(jpg);
@@ -82,7 +111,8 @@ class ExportService {
         final segPath = '${workDir.path}/seg_$start.mp4';
         final segSession = await FFmpegKit.execute(
           '-y -v error -framerate $fps -i "${chunkDir.path}/frame_%06d.jpg" '
-          '-c:v libx264 -pix_fmt yuv420p -r $fps "$segPath"',
+          '-c:v libx264 -preset veryfast -threads 0 '
+          '-pix_fmt yuv420p -r $fps "$segPath"',
         );
         final segRc = await segSession.getReturnCode();
         if (!ReturnCode.isSuccess(segRc)) {

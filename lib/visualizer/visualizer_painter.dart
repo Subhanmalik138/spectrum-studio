@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../models/project.dart';
 
-/// Minimal 3D vector with rotation + perspective projection. All six
+/// Minimal 3D vector with rotation + perspective projection. All twelve
 /// templates are drawn from real 3D coordinates projected onto the canvas —
 /// this is genuine 3D rendering, not a flat 2D imitation.
 class Vec3 {
@@ -53,6 +53,10 @@ class VisualizerPainter extends CustomPainter {
   final String title;
   final String artist;
 
+  /// When true, [background] is already blurred (the exporter pre-blurs it
+  /// once instead of paying for a full-screen blur on every frame).
+  final bool backgroundPreBlurred;
+
   VisualizerPainter({
     required this.bands,
     required this.beat,
@@ -62,6 +66,7 @@ class VisualizerPainter extends CustomPainter {
     required this.time,
     required this.title,
     required this.artist,
+    this.backgroundPreBlurred = false,
   });
 
   double _band(int i) {
@@ -129,7 +134,38 @@ class VisualizerPainter extends CustomPainter {
       case VisualizerTemplate.waveformTunnel:
         _waveformTunnel(canvas, center, unit, base, glowSigma);
         break;
+      case VisualizerTemplate.spiralGalaxy:
+        _spiralGalaxy(canvas, center, unit, base, glowSigma);
+        break;
+      case VisualizerTemplate.dnaHelix:
+        _dnaHelix(canvas, center, unit, base, glowSigma);
+        break;
+      case VisualizerTemplate.gridWall:
+        _gridWall(canvas, center, unit, base, glowSigma);
+        break;
+      case VisualizerTemplate.solarFlare:
+        _solarFlare(canvas, center, unit, base, glowSigma);
+        break;
+      case VisualizerTemplate.cubeField:
+        _cubeField(canvas, center, unit, base, glowSigma);
+        break;
+      case VisualizerTemplate.liquidWaves:
+        _liquidWaves(canvas, center, unit, base, glowSigma);
+        break;
     }
+
+    // Cinematic vignette: darkens the edges so the visualizer pops.
+    final vignetteRect = Offset.zero & size;
+    final vignette = RadialGradient(
+      center: Alignment.center,
+      radius: 0.9,
+      colors: [Colors.transparent, Colors.black.withOpacity(0.40)],
+      stops: const [0.55, 1.0],
+    );
+    canvas.drawRect(
+      vignetteRect,
+      Paint()..shader = vignette.createShader(vignetteRect),
+    );
 
     if (settings.showTitle) _paintText(canvas, size);
   }
@@ -162,7 +198,7 @@ class VisualizerPainter extends CustomPainter {
       drawH,
     );
     final src = Rect.fromLTWH(0, 0, imgSize.width, imgSize.height);
-    if (settings.backgroundBlur > 0.02) {
+    if (!backgroundPreBlurred && settings.backgroundBlur > 0.02) {
       canvas.saveLayer(
         rect,
         Paint()
@@ -459,6 +495,265 @@ class VisualizerPainter extends CustomPainter {
     }
   }
 
+  void _spiralGalaxy(
+    Canvas canvas,
+    Offset center,
+    double unit,
+    Color base,
+    double glowSigma,
+  ) {
+    const arms = 3;
+    const points = 30;
+    final rot = time * 0.35 + beat * 0.4;
+    final coreR = unit * 0.12 * (1 + beat * 0.8 + _bass * 0.3);
+    canvas.drawCircle(center, coreR, _fill(Colors.white, glowSigma: glowSigma));
+    canvas.drawCircle(center, coreR * 0.6, _fill(base));
+    for (int arm = 0; arm < arms; arm++) {
+      final armOffset = arm * (math.pi * 2 / arms);
+      Offset? prev;
+      for (int i = 0; i < points; i++) {
+        final t = i / points;
+        final v = _band((i + arm * 7) % 64);
+        final radius = unit * (0.25 + t * 1.15) * (1 + v * 0.25);
+        final a = armOffset + rot + t * math.pi * 2.2;
+        final p =
+            Vec3(math.cos(a) * radius, math.sin(a) * radius, 0).rotateX(0.7);
+        final o = _project(p, center, 1);
+        final c = Color.lerp(base, Colors.white, v * 0.8 + t * 0.2)!;
+        if (prev != null) {
+          _glowLine(canvas, prev, o, c, 2.5, glowSigma);
+        }
+        canvas.drawCircle(
+          o,
+          1.5 + v * 3 + t * 1.5,
+          _fill(c, glowSigma: glowSigma * 0.4),
+        );
+        prev = o;
+      }
+    }
+  }
+
+  void _dnaHelix(
+    Canvas canvas,
+    Offset center,
+    double unit,
+    Color base,
+    double glowSigma,
+  ) {
+    const rungs = 36;
+    final phase = time * 1.4;
+    final radius = unit * 0.55 * (1 + _bass * 0.25 + beat * 0.15);
+    final top = -unit * 1.1;
+    final bottom = unit * 1.1;
+    final strandA = <Offset>[];
+    final strandB = <Offset>[];
+    for (int i = 0; i < rungs; i++) {
+      final t = i / (rungs - 1);
+      final y = top + (bottom - top) * t;
+      final a = phase + t * math.pi * 4;
+      final v = _band(i % 64);
+      final r = radius * (0.85 + v * 0.3);
+      final pA =
+          Vec3(math.cos(a) * r, y, math.sin(a) * r).rotateY(time * 0.2);
+      final pB = Vec3(math.cos(a + math.pi) * r, y, math.sin(a + math.pi) * r)
+          .rotateY(time * 0.2);
+      final oA = _project(pA, center, 1);
+      final oB = _project(pB, center, 1);
+      strandA.add(oA);
+      strandB.add(oB);
+      final c = Color.lerp(base, Colors.white, v * 0.6)!;
+      _glowLine(canvas, oA, oB, c.withOpacity(0.55), 1.5, glowSigma * 0.5);
+    }
+    for (final strand in [strandA, strandB]) {
+      final path = Path();
+      for (int i = 0; i < strand.length; i++) {
+        if (i == 0) {
+          path.moveTo(strand[i].dx, strand[i].dy);
+        } else {
+          path.lineTo(strand[i].dx, strand[i].dy);
+        }
+      }
+      canvas.drawPath(
+        path,
+        _paint(base.withOpacity(0.9), width: 3, glowSigma: glowSigma),
+      );
+      canvas.drawPath(path, _paint(Colors.white.withOpacity(0.6), width: 1.2));
+    }
+  }
+
+  void _gridWall(
+    Canvas canvas,
+    Offset center,
+    double unit,
+    Color base,
+    double glowSigma,
+  ) {
+    const cols = 16;
+    const rows = 6;
+    final items = <(double, Offset, Offset, double)>[];
+    for (int row = 0; row < rows; row++) {
+      final z = row * unit * 0.55;
+      for (int col = 0; col < cols; col++) {
+        final v = _band((col * 64 ~/ cols) % 64);
+        final h = unit * 0.12 + v * unit * 0.9 + beat * unit * 0.08;
+        final x = (col - (cols - 1) / 2) * unit * 0.24;
+        final b = Vec3(x, unit * 0.75, z).rotateX(0.9);
+        final t = Vec3(x, unit * 0.75 - h, z).rotateX(0.9);
+        items.add((z, _project(b, center, 1), _project(t, center, 1), v));
+      }
+    }
+    items.sort((a, b) => b.$1.compareTo(a.$1)); // far first
+    for (final it in items) {
+      final c = Color.lerp(base, Colors.white, it.$4 * 0.6)!;
+      _glowLine(canvas, it.$2, it.$3, c, 3, glowSigma);
+    }
+  }
+
+  void _solarFlare(
+    Canvas canvas,
+    Offset center,
+    double unit,
+    Color base,
+    double glowSigma,
+  ) {
+    const n = 64;
+    final coreR = unit * 0.22 * (1 + beat * 0.7 + _bass * 0.3);
+    for (int i = 0; i < n; i++) {
+      final a = (i / n) * math.pi * 2 + time * 0.15;
+      final v = _band(i);
+      final r1 = coreR + unit * 0.25 + v * unit * 1.25 + beat * unit * 0.15;
+      final o0 = Offset(
+        center.dx + math.cos(a) * coreR,
+        center.dy + math.sin(a) * coreR,
+      );
+      final o1 = Offset(
+        center.dx + math.cos(a) * r1,
+        center.dy + math.sin(a) * r1,
+      );
+      final c = Color.lerp(base, Colors.white, v * 0.75)!;
+      _glowLine(canvas, o0, o1, c, 3, glowSigma);
+    }
+    canvas.drawCircle(center, coreR, _fill(Colors.white, glowSigma: glowSigma));
+    canvas.drawCircle(center, coreR * 0.6, _fill(base));
+  }
+
+  void _cubeField(
+    Canvas canvas,
+    Offset center,
+    double unit,
+    Color base,
+    double glowSigma,
+  ) {
+    const n = 8;
+    final items = <(double, Offset, double, double, Color)>[];
+    for (int row = 0; row < n; row++) {
+      for (int col = 0; col < n; col++) {
+        final v = _band((row * n + col) % 64);
+        final s = unit * 0.09 + v * unit * 0.16 + beat * unit * 0.03;
+        final x = (col - (n - 1) / 2) * unit * 0.30;
+        final y = (row - (n - 1) / 2) * unit * 0.30;
+        final p = Vec3(x, y, row * unit * 0.18)
+            .rotateX(0.5)
+            .rotateY(time * 0.15);
+        final f = 520 / (520 + p.z * 0.55);
+        items.add((
+          p.z,
+          _project(p, center, 1),
+          s * f,
+          v,
+          Color.lerp(base, Colors.white, v * 0.6)!,
+        ));
+      }
+    }
+    items.sort((a, b) => a.$1.compareTo(b.$1)); // far first
+    for (final it in items) {
+      final o = it.$2;
+      final s = it.$3;
+      final back = Offset(o.dx + s * 0.45, o.dy - s * 0.45);
+      final front = Rect.fromCenter(center: o, width: 2 * s, height: 2 * s);
+      final backRect =
+          Rect.fromCenter(center: back, width: 2 * s, height: 2 * s);
+      canvas.drawRect(
+        backRect,
+        _paint(it.$5.withOpacity(0.5), width: 1.2),
+      );
+      canvas.drawRect(
+        front,
+        _paint(it.$5, width: 2, glowSigma: glowSigma * 0.5),
+      );
+      canvas.drawLine(
+        Offset(front.left, front.top),
+        Offset(backRect.left, backRect.top),
+        _paint(it.$5.withOpacity(0.5), width: 1.2),
+      );
+      canvas.drawLine(
+        Offset(front.right, front.top),
+        Offset(backRect.right, backRect.top),
+        _paint(it.$5.withOpacity(0.5), width: 1.2),
+      );
+      canvas.drawLine(
+        Offset(front.right, front.bottom),
+        Offset(backRect.right, backRect.bottom),
+        _paint(it.$5.withOpacity(0.5), width: 1.2),
+      );
+      canvas.drawLine(
+        Offset(front.left, front.bottom),
+        Offset(backRect.left, backRect.bottom),
+        _paint(it.$5.withOpacity(0.5), width: 1.2),
+      );
+    }
+  }
+
+  void _liquidWaves(
+    Canvas canvas,
+    Offset center,
+    double unit,
+    Color base,
+    double glowSigma,
+  ) {
+    const layers = 5;
+    const steps = 72;
+    final halfW = center.dx * 1.05;
+    final left = center.dx - halfW;
+    final right = center.dx + halfW;
+    final floorY = center.dy + unit * 1.4;
+    for (int layer = 0; layer < layers; layer++) {
+      final depth = layer / layers;
+      final baseY = center.dy -
+          unit * 0.7 +
+          layer * unit * 0.35 +
+          math.sin(time * 0.7 + layer) * unit * 0.05;
+      final amp = unit *
+          (0.10 + depth * 0.22) *
+          (1 + _band(layer * 12) * 0.8 + beat * 0.2);
+      final crest = Path();
+      for (int i = 0; i <= steps; i++) {
+        final x = left + (i / steps) * (right - left);
+        final y = baseY +
+            math.sin(
+              i / steps * math.pi * 2 * (2 + layer * 0.5) +
+                  time * (1 + layer * 0.3),
+            ) *
+                amp;
+        if (i == 0) {
+          crest.moveTo(x, y);
+        } else {
+          crest.lineTo(x, y);
+        }
+      }
+      final fill = Path.from(crest)
+        ..lineTo(right, floorY)
+        ..lineTo(left, floorY)
+        ..close();
+      final c = Color.lerp(base, Colors.white, depth * 0.5)!;
+      canvas.drawPath(fill, _fill(c.withOpacity(0.16 + depth * 0.10)));
+      canvas.drawPath(
+        crest,
+        _paint(c, width: 2.5, glowSigma: glowSigma * (0.4 + depth * 0.6)),
+      );
+    }
+  }
+
   @override
   bool shouldRepaint(covariant VisualizerPainter oldDelegate) =>
       oldDelegate.bands != bands ||
@@ -467,6 +762,7 @@ class VisualizerPainter extends CustomPainter {
       oldDelegate.template != template ||
       oldDelegate.settings != settings ||
       oldDelegate.background != background ||
+      oldDelegate.backgroundPreBlurred != backgroundPreBlurred ||
       oldDelegate.title != title ||
       oldDelegate.artist != artist;
 }

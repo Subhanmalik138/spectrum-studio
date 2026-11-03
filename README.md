@@ -8,9 +8,11 @@ visualizer apps do it — but fully offline after install.
 1. **Pick a song** from your device (MP3, M4A, WAV, FLAC, OGG).
 2. **Add a background picture** (optional — a dark studio gradient is built in).
 3. **Enter the song title and artist name.**
-4. **Pick one of six 3D visualizer templates:**
+4. **Pick one of twelve 3D visualizer templates:**
    - Circular Spectrum, Rotating 3D Bars, Neon Rings,
-   - Glowing Sphere, Particle Field, Waveform Tunnel.
+   - Glowing Sphere, Particle Field, Waveform Tunnel,
+   - Spiral Galaxy, DNA Helix, 3D Grid Wall,
+   - Solar Flare, Cube Field, Liquid Waves.
 5. **Preview and tap Export Video.**
 
 The visualizer reacts to the song's **real frequencies and beats** — a pure-Dart

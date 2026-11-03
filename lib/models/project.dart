@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:ui' show Color;
 
-/// The six built-in 3D visualizer templates.
+/// The twelve built-in 3D visualizer templates. New values are always
+/// appended at the end so saved projects keep resolving to the same
+/// template they were created with.
 enum VisualizerTemplate {
   circularSpectrum,
   rotatingBars,
@@ -9,6 +11,12 @@ enum VisualizerTemplate {
   glowingSphere,
   particles,
   waveformTunnel,
+  spiralGalaxy,
+  dnaHelix,
+  gridWall,
+  solarFlare,
+  cubeField,
+  liquidWaves,
 }
 
 extension VisualizerTemplateInfo on VisualizerTemplate {
@@ -26,6 +34,18 @@ extension VisualizerTemplateInfo on VisualizerTemplate {
         return 'Particle Field';
       case VisualizerTemplate.waveformTunnel:
         return 'Waveform Tunnel';
+      case VisualizerTemplate.spiralGalaxy:
+        return 'Spiral Galaxy';
+      case VisualizerTemplate.dnaHelix:
+        return 'DNA Helix';
+      case VisualizerTemplate.gridWall:
+        return '3D Grid Wall';
+      case VisualizerTemplate.solarFlare:
+        return 'Solar Flare';
+      case VisualizerTemplate.cubeField:
+        return 'Cube Field';
+      case VisualizerTemplate.liquidWaves:
+        return 'Liquid Waves';
     }
   }
 
@@ -43,6 +63,18 @@ extension VisualizerTemplateInfo on VisualizerTemplate {
         return 'Thousands of 3D particles driven by the frequency spectrum.';
       case VisualizerTemplate.waveformTunnel:
         return 'A perspective tunnel of waveform rings flying past the camera.';
+      case VisualizerTemplate.spiralGalaxy:
+        return 'Three audio-reactive spiral arms spinning around a glowing core.';
+      case VisualizerTemplate.dnaHelix:
+        return 'A double helix whose strands breathe with the music.';
+      case VisualizerTemplate.gridWall:
+        return 'A 3D equalizer floor stretching into the distance.';
+      case VisualizerTemplate.solarFlare:
+        return 'Explosive rays of light bursting on every beat.';
+      case VisualizerTemplate.cubeField:
+        return 'A field of 3D cubes bouncing to the frequency spectrum.';
+      case VisualizerTemplate.liquidWaves:
+        return 'Layered glowing waves flowing across the screen.';
     }
   }
 }
