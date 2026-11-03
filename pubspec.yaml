@@ -1,0 +1,27 @@
+name: spectrum_studio
+description: "Spectrum Studio - 3D Music Visualizer. Create professional music visualizer videos from your songs."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  file_picker: ^8.1.0
+  image_picker: ^1.1.0
+  just_audio: ^0.9.46
+  path_provider: ^2.1.5
+  shared_preferences: ^2.3.0
+  ffmpeg_kit_flutter_new: ^4.6.7
+  image: ^4.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
