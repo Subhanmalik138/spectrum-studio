@@ -138,10 +138,10 @@ class VisualizerPainter extends CustomPainter {
     // Fallback gradient when no background image was chosen.
     final rect = Offset.zero & size;
     if (background == null) {
-      final grad = LinearGradient(
+      const grad = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [const Color(0xFF14101F), const Color(0xFF050308)],
+        colors: [Color(0xFF14101F), Color(0xFF050308)],
       );
       canvas.drawRect(rect, Paint()..shader = grad.createShader(rect));
       return;
@@ -252,7 +252,7 @@ class VisualizerPainter extends CustomPainter {
     double glowSigma,
   ) {
     const n = 64;
-    final tilt = 0.55;
+    const tilt = 0.55;
     final rot = time * 0.25;
     final radius = unit * 0.85;
     for (int i = 0; i < n; i++) {
